@@ -1,28 +1,19 @@
-// webhook.js
-import express from "express";
-import fetch from "node-fetch"; // make sure it's installed: npm install node-fetch
-
-const router = express.Router();
-
-router.post("/", async (req, res) => {
+export default async (req, res) => {
   try {
-    console.log("📤 Forwarding to Kusoma Africa:", req.body);
+    console.log("📥 Incoming M-Pesa webhook:", req.body);
+    
+    // Optional: Forward to Base44 (if needed)
+    // const response = await fetch("https://kusoma-africa-47df8661.base44.app/functions/paymentWebhook", {
+    //   method: "POST",
+    //   headers: { "Content-Type": "application/json" },
+    //   body: JSON.stringify(req.body),
+    // });
+    // const result = await response.text();
+    // console.log("✅ Forwarded to Base44:", result);
 
-    const response = await fetch("https://kusoma-africa-47df8661.base44.app/functions/paymentWebhook", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(req.body)
-    });
-
-    const result = await response.text();
-    console.log("✅ Webhook forwarded. Base44 responded with:", result);
-    res.status(200).send("Forwarded to Base44");
+    res.status(200).send("OK");
   } catch (error) {
-    console.error("❌ Webhook forwarding failed:", error);
-    res.status(500).send("Error forwarding webhook");
+    console.error("❌ Error handling webhook:", error);
+    res.status(500).send("Error processing webhook");
   }
-});
-
-export default router;
+};
