@@ -1,7 +1,8 @@
 import dotenv from "dotenv";
-import base44 from "@base44/sdk";
+import base44 from "@base44/sdk"; // ✅ Correct import
 dotenv.config();
 
+// ✅ Initialize Base44 client
 const client = base44({
   appId: process.env.BASE44_APP_ID,
   apiKey: process.env.BASE44_SERVICE_ROLE_KEY,
@@ -19,11 +20,12 @@ export default async function confirmationHandler(req, res) {
       resultCode: callbackData.ResultCode,
       resultDesc: callbackData.ResultDesc,
       mpesaReceiptNumber:
-        callbackData.CallbackMetadata?.Item?.find((i) => i.Name === "MpesaReceiptNumber")?.Value || "",
+        callbackData.CallbackMetadata?.Item?.find(i => i.Name === "MpesaReceiptNumber")?.Value || "",
     };
 
     console.log("📥 M-Pesa Confirmation:", payload);
 
+    // ✅ Lookup order in Base44 using checkoutRequestId
     const orders = await client.entities.Order.filter({
       checkout_request_id: payload.checkoutRequestId,
     });
@@ -36,6 +38,7 @@ export default async function confirmationHandler(req, res) {
     const order = orders[0];
     console.log("🔍 Verifying payment for order:", order.id);
 
+    // ✅ Update order status based on resultCode
     if (payload.resultCode === 0 || payload.resultCode === "0") {
       await client.entities.Order.update(order.id, {
         payment_status: "paid",
