@@ -1,9 +1,8 @@
 import dotenv from "dotenv";
-import { createClient } from "@base44/sdk";
+import base44 from "@base44/sdk";
 dotenv.config();
 
-// Base44 Client setup
-const base44 = createClient({
+const client = base44({
   appId: process.env.BASE44_APP_ID,
   apiKey: process.env.BASE44_SERVICE_ROLE_KEY,
 });
@@ -11,7 +10,6 @@ const base44 = createClient({
 export default async function confirmationHandler(req, res) {
   try {
     const callbackData = req.body?.Body?.stkCallback;
-
     if (!callbackData) {
       return res.status(400).json({ message: "Invalid callback format" });
     }
@@ -26,8 +24,7 @@ export default async function confirmationHandler(req, res) {
 
     console.log("📥 M-Pesa Confirmation:", payload);
 
-    // 1. Lookup order in Base44 using checkoutRequestId
-    const orders = await base44.entities.Order.filter({
+    const orders = await client.entities.Order.filter({
       checkout_request_id: payload.checkoutRequestId,
     });
 
@@ -39,16 +36,15 @@ export default async function confirmationHandler(req, res) {
     const order = orders[0];
     console.log("🔍 Verifying payment for order:", order.id);
 
-    // 2. Update based on resultCode
     if (payload.resultCode === 0 || payload.resultCode === "0") {
-      await base44.entities.Order.update(order.id, {
+      await client.entities.Order.update(order.id, {
         payment_status: "paid",
         payment_reference: payload.mpesaReceiptNumber,
         mpesa_receipt_number: payload.mpesaReceiptNumber,
       });
       console.log("✅ Order marked as PAID in Base44");
     } else {
-      await base44.entities.Order.update(order.id, {
+      await client.entities.Order.update(order.id, {
         payment_status: "failed",
         failure_reason: payload.resultDesc || "Payment failed",
       });
