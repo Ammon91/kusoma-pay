@@ -1,26 +1,18 @@
+// server.js
 import express from "express";
-import dotenv from "dotenv";
-
-import stkRoute from "./stk.js";
-import confirm from "./confirmation.js";
-import validate from "./validation.js";
-import webhook from "./webhook.js";
-
-dotenv.config();
+import bodyParser from "body-parser";
+import webhook from "./webhook.js"; // Make sure this path is correct
 
 const app = express();
-app.use(express.json());
+const PORT = process.env.PORT || 3000;
 
-// Your API routes
-app.post("/stkpush", stkRoute);
-app.post("/payment/confirm", confirm);
-app.post("/payment/validate", validate);
+app.use(bodyParser.json()); // To parse JSON bodies
+app.use("/webhook", webhook); // M-Pesa callback will hit this
 
-// 👇 This is the critical route Safaricom will POST to
-app.post("/webhook", webhook);
+app.get("/", (req, res) => {
+  res.send("Kusoma Pay backend is running!");
+});
 
-// Server listening
-const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Server is running on port ${PORT}`);
 });
