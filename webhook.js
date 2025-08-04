@@ -1,27 +1,30 @@
 // webhook.js
-import dotenv from "dotenv";
 import express from "express";
-import axios from "axios";
+import fetch from "node-fetch"; // Ensure this is installed: npm install node-fetch
 
-dotenv.config();
 const router = express.Router();
 
+// M-Pesa sends a POST request to this route
 router.post("/", async (req, res) => {
+  const base44WebhookUrl = "https://kusoma-africa-47df8661.base44.app/functions/paymentWebhook";
+
   try {
-    const callbackData = req.body;
+    console.log("📡 Incoming M-Pesa webhook received, forwarding to Base44...");
 
-    // 🔁 Forward POST data to your Base44 function
-    const base44Url = process.env.BASE44_WEBHOOK_URL || "https://yourapp.base44.app/functions/paymentWebhook";
-
-    console.log("🔁 Forwarding webhook to Base44:", base44Url);
-    const response = await axios.post(base44Url, callbackData, {
+    const response = await fetch(base44WebhookUrl, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body),
     });
 
-    console.log("✅ Forwarded to Base44:", response.status);
-    res.status(200).send("Webhook forwarded successfully");
+    const responseText = await response.text();
+
+    console.log("✅ Webhook successfully forwarded to Base44.");
+    console.log("📥 Base44 response:", responseText);
+
+    res.status(200).send("Webhook forwarded to Base44");
   } catch (error) {
-    console.error("❌ Error forwarding webhook:", error.message);
+    console.error("❌ Webhook forwarding failed:", error.message);
     res.status(500).send("Failed to forward webhook");
   }
 });
