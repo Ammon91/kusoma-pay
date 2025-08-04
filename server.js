@@ -1,16 +1,18 @@
-// server.js
 import express from "express";
-import bodyParser from "body-parser";
-import webhook from "./webhook.js"; // Make sure this path is correct
+import dotenv from "dotenv";
+import webhook from "./webhook.js";
 
+dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
-app.use(bodyParser.json()); // To parse JSON bodies
-app.use("/webhook", webhook); // M-Pesa callback will hit this
+app.use(express.json());
+
+// Webhook route that Safaricom will hit
+app.post("/webhook", webhook);
 
 app.get("/", (req, res) => {
-  res.send("Kusoma Pay backend is running!");
+  res.send("Kusoma Pay API is running");
 });
 
 app.listen(PORT, () => {
