@@ -1,53 +1,29 @@
-import fetch from "node-fetch";
+// webhook.js
+import dotenv from "dotenv";
+import express from "express";
+import axios from "axios";
 
-export default async function (req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ detail: "Method Not Allowed" });
-  }
+dotenv.config();
+const router = express.Router();
 
-  const {
-    merchantRequestId,
-    checkoutRequestId,
-    resultCode,
-    resultDesc,
-    amount,
-    phoneNumber,
-    mpesaReceiptNumber,
-    transactionDate
-  } = req.body;
-
+router.post("/", async (req, res) => {
   try {
-    const base44WebhookUrl = 'https://app--kusoma-africa-47df8661.base44.app/api/apps/6889dba68f46c9a947df8661/functions/paymentWebhook';
+    const callbackData = req.body;
 
-    const payload = {
-      merchantRequestId,
-      checkoutRequestId,
-      resultCode,
-      resultDesc,
-      amount,
-      phoneNumber,
-      mpesaReceiptNumber,
-      transactionDate
-    };
+    // 🔁 Forward POST data to your Base44 function
+    const base44Url = process.env.BASE44_WEBHOOK_URL || "https://yourapp.base44.app/functions/paymentWebhook";
 
-    const response = await fetch(base44WebhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+    console.log("🔁 Forwarding webhook to Base44:", base44Url);
+    const response = await axios.post(base44Url, callbackData, {
+      headers: { "Content-Type": "application/json" },
     });
 
-    const responseText = await response.text();
-    console.log("📤 Webhook sent to Base44. Status:", response.status);
-    console.log("📦 Webhook response body:", responseText);
-
-    if (response.ok) {
-      res.json({ forwarded: true, base44Status: response.status, base44Response: responseText });
-    } else {
-      res.status(response.status).json({ error: "Forwarding failed", base44Response: responseText });
-    }
-
+    console.log("✅ Forwarded to Base44:", response.status);
+    res.status(200).send("Webhook forwarded successfully");
   } catch (error) {
-    console.error("❌ Webhook forwarding error:", error);
-    res.status(500).json({ error: "Internal Server Error", message: error.message });
+    console.error("❌ Error forwarding webhook:", error.message);
+    res.status(500).send("Failed to forward webhook");
   }
-}
+});
+
+export default router;
