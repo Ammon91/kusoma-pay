@@ -1,14 +1,10 @@
 {
-  "name": "kusoma-pay",
-  "version": "1.0.0",
-  "description": "M-Pesa to Base44 webhook forwarding service for Kusoma Africa",
-  "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "node-fetch": "^3.3.2"
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2"
   }
 }
