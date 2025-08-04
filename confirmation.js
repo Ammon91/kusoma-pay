@@ -24,7 +24,8 @@ export default async function confirmationHandler(req, res) {
 
     console.log("📤 Forwarding to Kusoma Africa:", payload);
 
-    const response = await fetch("https://preview--kusoma-africa-47df8661.base44.app/functions/paymentWebhook", {
+    // ✅ Correct Base44 webhook URL (POST endpoint)
+    const response = await fetch("https://app--kusoma-africa-47df8661.base44.app/api/apps/6889dba68f46c9a947df8661/functions/paymentWebhook", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
