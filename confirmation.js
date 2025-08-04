@@ -1,9 +1,8 @@
 import dotenv from "dotenv";
 import base44 from "@base44/sdk";
-
 dotenv.config();
 
-// Initialize Base44
+// ✅ Initialize Base44 client
 base44.init({
   appId: process.env.BASE44_APP_ID,
   apiKey: process.env.BASE44_SERVICE_ROLE_KEY,
@@ -12,7 +11,6 @@ base44.init({
 export default async function confirmationHandler(req, res) {
   try {
     const callbackData = req.body?.Body?.stkCallback;
-
     if (!callbackData) {
       return res.status(400).json({ message: "Invalid callback format" });
     }
@@ -27,7 +25,7 @@ export default async function confirmationHandler(req, res) {
 
     console.log("📥 M-Pesa Confirmation:", payload);
 
-    // Lookup order in Base44 using checkoutRequestId
+    // 🔍 Lookup order in Base44 using checkoutRequestId
     const orders = await base44.entities.Order.filter({
       checkout_request_id: payload.checkoutRequestId,
     });
@@ -40,7 +38,7 @@ export default async function confirmationHandler(req, res) {
     const order = orders[0];
     console.log("🔍 Verifying payment for order:", order.id);
 
-    // Update order status based on resultCode
+    // ✅ Update based on resultCode
     if (payload.resultCode === 0 || payload.resultCode === "0") {
       await base44.entities.Order.update(order.id, {
         payment_status: "paid",
