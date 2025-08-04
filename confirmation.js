@@ -1,4 +1,4 @@
-// confirmation.js - Complete webhook handler for M-Pesa confirmations
+// confirmation.js - Updated to handle M-Pesa STK callback format
 
 export default async function confirmationHandler(req, res) {
   try {
@@ -6,39 +6,59 @@ export default async function confirmationHandler(req, res) {
     
     console.log("✅ Payment Confirmed (from Safaricom):", JSON.stringify(callbackData, null, 2));
 
-    // Extract M-Pesa confirmation data
+    // Extract data from M-Pesa STK callback format
+    const stkCallback = callbackData.Body?.stkCallback;
+    if (!stkCallback) {
+      console.log("⚠️ No stkCallback found in request body");
+      return res.status(200).json({
+        ResultCode: "0",
+        ResultDesc: "Confirmation received"
+      });
+    }
+
     const {
-      TransID,
-      TransTime,
-      TransAmount,
-      BusinessShortCode,
-      BillRefNumber,
-      InvoiceNumber,
-      OrgAccountBalance,
-      ThirdPartyTransID,
-      MSISDN,
-      FirstName,
-      MiddleName,
-      LastName
-    } = callbackData;
+      MerchantRequestID,
+      CheckoutRequestID,
+      ResultCode,
+      ResultDesc,
+      CallbackMetadata
+    } = stkCallback;
+
+    // Extract metadata items
+    let mpesaReceiptNumber, amount, phoneNumber, transactionDate;
+    if (CallbackMetadata?.Item) {
+      CallbackMetadata.Item.forEach(item => {
+        switch (item.Name) {
+          case 'MpesaReceiptNumber':
+            mpesaReceiptNumber = item.Value;
+            break;
+          case 'Amount':
+            amount = item.Value;
+            break;
+          case 'PhoneNumber':
+            phoneNumber = item.Value;
+            break;
+          case 'TransactionDate':
+            transactionDate = item.Value;
+            break;
+        }
+      });
+    }
 
     // Prepare webhook payload for Kusoma Africa
     const webhookPayload = {
-      ResultCode: "0", // Success
-      ResultDesc: "The service request is processed successfully.",
-      MpesaReceiptNumber: TransID,
-      TransactionDate: TransTime,
-      PhoneNumber: MSISDN,
-      Amount: TransAmount,
-      CheckoutRequestID: BillRefNumber, // This should match the order ID
-      // Additional data
-      CustomerName: `${FirstName || ''} ${MiddleName || ''} ${LastName || ''}`.trim(),
-      AccountReference: BillRefNumber,
-      TransactionDesc: `Payment for order ${BillRefNumber}`
+      ResultCode: ResultCode,
+      ResultDesc: ResultDesc,
+      MpesaReceiptNumber: mpesaReceiptNumber,
+      TransactionDate: transactionDate,
+      PhoneNumber: phoneNumber,
+      Amount: amount,
+      CheckoutRequestID: CheckoutRequestID,
+      MerchantRequestID: MerchantRequestID
     };
 
     // Forward to Kusoma Africa Base44 webhook
-    const webhookUrl = "https://preview--kusoma-africa-47df8661.base44.app/functions/paymentWebhook";
+    const webhookUrl = "https://base44.app/api/apps/6889dba68f46c9a947df8661/functions/paymentWebhook";
     
     console.log("📤 Forwarding to Kusoma Africa:", webhookUrl);
     console.log("📦 Payload:", JSON.stringify(webhookPayload, null, 2));
@@ -49,8 +69,7 @@ export default async function confirmationHandler(req, res) {
         "Content-Type": "application/json",
         "User-Agent": "Kusoma-Pay-Webhook/1.0"
       },
-      body: JSON.stringify(webhookPayload),
-      timeout: 10000 // 10 second timeout
+      body: JSON.stringify(webhookPayload)
     });
 
     if (!response.ok) {
@@ -60,18 +79,12 @@ export default async function confirmationHandler(req, res) {
         statusText: response.statusText,
         response: errorText
       });
-      
-      // Still return success to Safaricom to avoid retries
-      return res.status(200).json({ 
-        ResultCode: "0",
-        ResultDesc: "Confirmation received (forwarding failed but logged)" 
-      });
+    } else {
+      const responseData = await response.json();
+      console.log("✅ Successfully forwarded to Kusoma Africa:", responseData);
     }
 
-    const responseData = await response.json();
-    console.log("✅ Successfully forwarded to Kusoma Africa:", responseData);
-
-    // Respond to Safaricom
+    // Always respond success to Safaricom
     return res.status(200).json({
       ResultCode: "0",
       ResultDesc: "The service request is processed successfully."
