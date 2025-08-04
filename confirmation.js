@@ -1,46 +1,49 @@
-// confirmation.js
+import fetch from "node-fetch";
+import dotenv from "dotenv";
+dotenv.config();
 
 export default async function confirmationHandler(req, res) {
   try {
     const callbackData = req.body?.Body?.stkCallback;
 
     if (!callbackData) {
-      return res.status(400).json({ message: "Invalid callback data format" });
+      return res.status(400).json({ message: "Invalid Safaricom callback format" });
     }
 
-    console.log("✅ Payment Confirmed (from Safaricom):", JSON.stringify(callbackData, null, 2));
-
-    // Prepare payload for Kusoma Africa
     const payload = {
-      merchantRequestId: callbackData.MerchantRequestID,
       checkoutRequestId: callbackData.CheckoutRequestID,
       resultCode: callbackData.ResultCode,
       resultDesc: callbackData.ResultDesc,
+      mpesaReceiptNumber: callbackData.CallbackMetadata?.Item?.find(i => i.Name === "MpesaReceiptNumber")?.Value || "",
       amount: callbackData.CallbackMetadata?.Item?.find(i => i.Name === "Amount")?.Value || 0,
       phoneNumber: callbackData.CallbackMetadata?.Item?.find(i => i.Name === "PhoneNumber")?.Value || "",
-      mpesaReceiptNumber: callbackData.CallbackMetadata?.Item?.find(i => i.Name === "MpesaReceiptNumber")?.Value || "",
-      transactionDate: callbackData.CallbackMetadata?.Item?.find(i => i.Name === "TransactionDate")?.Value || "",
+      transactionDate: callbackData.CallbackMetadata?.Item?.find(i => i.Name === "TransactionDate")?.Value || ""
     };
 
-    console.log("📤 Forwarding to Kusoma Africa:", payload);
+    console.log("📤 Safaricom Payment Data Received:", payload);
 
-    // ✅ Correct Base44 webhook URL (POST endpoint)
-    const response = await fetch("https://app--kusoma-africa-47df8661.base44.app/api/apps/6889dba68f46c9a947df8661/functions/paymentWebhook", {
+    // Send to Base44
+    const base44Response = await fetch(`${process.env.BASE44_FUNCTION_URL}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.BASE44_SERVICE_ROLE_KEY}`
+      },
       body: JSON.stringify(payload)
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error("❌ Webhook forwarding failed:", error);
-      return res.status(500).json({ message: "Forwarding failed", error });
+    const result = await base44Response.json();
+
+    if (!base44Response.ok) {
+      console.error("❌ Failed to notify Base44:", result);
+      return res.status(500).json({ message: "Notification to Base44 failed", details: result });
     }
 
-    console.log("✅ Successfully forwarded to Kusoma Africa.");
-    return res.status(200).json({ message: "Confirmation received and forwarded." });
+    console.log("✅ Successfully notified Base44:", result);
+    return res.status(200).json({ message: "Payment received and forwarded to Base44" });
+
   } catch (error) {
-    console.error("❌ Error in confirmation handler:", error.message);
-    return res.status(500).json({ message: "Internal server error in confirmation." });
+    console.error("❌ Error processing payment:", error);
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 }
